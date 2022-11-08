@@ -29,6 +29,7 @@ const dbConnect = async () => {
 dbConnect();
 
 const serviceCollection = client.db("photography").collection("services");
+const reviewCollection = client.db("photography").collection("reviews");
 
 app.get("/service", async (req, res) => {
   try {
@@ -77,6 +78,31 @@ app.get("/services/:id", async (req, res) => {
       status: true,
       message: "Data find successfully",
       data: services,
+    });
+  } catch (error) {
+    console.error(error);
+    res.send({
+      status: false,
+      message: error,
+    });
+  }
+});
+
+app.post("/review", async (req, res) => {
+  const order = req.body;
+  const result = await reviewCollection.insertOne(order);
+  res.send(result);
+});
+
+app.get("/review", async (req, res) => {
+  try {
+    const query = {};
+    const cursor = reviewCollection.find(query);
+    const review = await cursor.toArray();
+    res.send({
+      status: true,
+      message: "Data find successfully",
+      data: review,
     });
   } catch (error) {
     console.error(error);

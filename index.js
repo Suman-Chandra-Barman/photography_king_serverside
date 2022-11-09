@@ -112,6 +112,32 @@ app.get("/review", async (req, res) => {
     });
   }
 });
+app.get("/my-review", async (req, res) => {
+  try {
+    const email = req.query.email;
+    const query = { email: { $in: [email] } };
+    const cursor = reviewCollection.find(query);
+    const review = await cursor.toArray();
+    res.send({
+      status: true,
+      message: "Data find successfully",
+      data: review,
+    });
+  } catch (error) {
+    console.error(error);
+    res.send({
+      status: false,
+      message: error,
+    });
+  }
+});
+
+app.delete("/my-review/:id", async (req, res) => {
+  const id = req.params.id;
+  const query = { _id: ObjectId(id) };
+  const result = await reviewCollection.deleteOne(query);
+  res.send(result);
+});
 
 // root api
 app.get("/", (req, res) => {

@@ -139,6 +139,12 @@ app.delete("/my-review/:id", async (req, res) => {
   res.send(result);
 });
 
+app.post("/services", async (req, res) => {
+  const service = req.body;
+  const result = await serviceCollection.insertOne(service);
+  res.send(result);
+});
+
 // root api
 app.get("/", (req, res) => {
   res.send("Photography King Server is Running");

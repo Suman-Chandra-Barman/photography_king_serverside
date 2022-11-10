@@ -20,6 +20,7 @@ const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1,
 });
 
+// jwt token verify
 const verifyJWT = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
@@ -36,6 +37,7 @@ const verifyJWT = (req, res, next) => {
   });
 };
 
+// connect with database
 const dbConnect = async () => {
   try {
     await client.connect();
@@ -45,9 +47,11 @@ const dbConnect = async () => {
 };
 dbConnect();
 
+// server and collection create
 const serviceCollection = client.db("photography").collection("services");
 const reviewCollection = client.db("photography").collection("reviews");
 
+// get api
 app.get("/service", async (req, res) => {
   try {
     const limit = parseInt(req.query.limit);
@@ -112,12 +116,6 @@ app.get("/services/:id", async (req, res) => {
   }
 });
 
-app.post("/review", async (req, res) => {
-  const order = req.body;
-  const result = await reviewCollection.insertOne(order);
-  res.send(result);
-});
-
 app.get("/review", async (req, res) => {
   try {
     const name = req.query.name;
@@ -158,10 +156,11 @@ app.get("/my-review", verifyJWT, async (req, res) => {
   }
 });
 
-app.delete("/my-review/:id", verifyJWT, async (req, res) => {
-  const id = req.params.id;
-  const query = { _id: ObjectId(id) };
-  const result = await reviewCollection.deleteOne(query);
+// post api
+
+app.post("/review", async (req, res) => {
+  const order = req.body;
+  const result = await reviewCollection.insertOne(order);
   res.send(result);
 });
 
@@ -178,6 +177,28 @@ app.post("/jwt", (req, res) => {
     expiresIn: "2 days",
   });
   res.send({ token });
+});
+
+// update api
+app.patch("/my-review/:id", async (req, res) => {
+  const id = req.params.id;
+  const updateData = req.body.updateMessage;
+  const query = { _id: ObjectId(id) };
+  const updateDoc = {
+    $set: {
+      message: updateData,
+    },
+  };
+  const result = await reviewCollection.updateOne(query, updateDoc);
+  res.send(result);
+});
+
+// delete collection
+app.delete("/my-review/:id", verifyJWT, async (req, res) => {
+  const id = req.params.id;
+  const query = { _id: ObjectId(id) };
+  const result = await reviewCollection.deleteOne(query);
+  res.send(result);
 });
 
 // root api

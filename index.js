@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
 
 const app = express();
@@ -19,6 +20,22 @@ const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1,
 });
 
+const verifyJWT = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return res.status(401).send({ message: "Unauthorized access" });
+  }
+  const token = authHeader.split(" ")[1];
+  jwt.verify(token, process.env.TOKEN_KEY, (err, decoded) => {
+    if (err) {
+      return res.status(403).send({ message: "Forbidden access" });
+    }
+    req.decoded = decoded;
+    next();
+  });
+};
+
 const dbConnect = async () => {
   try {
     await client.connect();
@@ -34,12 +51,19 @@ const reviewCollection = client.db("photography").collection("reviews");
 app.get("/service", async (req, res) => {
   try {
     const limit = parseInt(req.query.limit);
+    const total = parseInt(req.query.total);
+
     const query = {};
     const cursor = serviceCollection.find(query);
-    const service = await cursor.limit(limit).toArray();
+    const service = await cursor
+      .skip(total - limit)
+      .limit(limit)
+      .toArray();
+    const count = await serviceCollection.estimatedDocumentCount();
     res.send({
       status: true,
       message: "Data find successfully",
+      total: count,
       data: service,
     });
   } catch (error) {
@@ -96,7 +120,8 @@ app.post("/review", async (req, res) => {
 
 app.get("/review", async (req, res) => {
   try {
-    const query = {};
+    const name = req.query.name;
+    const query = { name: { $in: [name] } };
     const cursor = reviewCollection.find(query);
     const review = await cursor.toArray();
     res.send({
@@ -112,7 +137,8 @@ app.get("/review", async (req, res) => {
     });
   }
 });
-app.get("/my-review", async (req, res) => {
+
+app.get("/my-review", verifyJWT, async (req, res) => {
   try {
     const email = req.query.email;
     const query = { email: { $in: [email] } };
@@ -132,7 +158,7 @@ app.get("/my-review", async (req, res) => {
   }
 });
 
-app.delete("/my-review/:id", async (req, res) => {
+app.delete("/my-review/:id", verifyJWT, async (req, res) => {
   const id = req.params.id;
   const query = { _id: ObjectId(id) };
   const result = await reviewCollection.deleteOne(query);
@@ -143,6 +169,15 @@ app.post("/services", async (req, res) => {
   const service = req.body;
   const result = await serviceCollection.insertOne(service);
   res.send(result);
+});
+
+// create access token key
+app.post("/jwt", (req, res) => {
+  const user = req.body;
+  const token = jwt.sign(user, process.env.TOKEN_KEY, {
+    expiresIn: "2 days",
+  });
+  res.send({ token });
 });
 
 // root api
